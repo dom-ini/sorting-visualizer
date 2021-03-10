@@ -4,7 +4,7 @@ import random as rnd
 pg.init()
 
 
-# TODO Selection, heap, quick
+# TODO heap, quick
 class MyRect(pg.Rect):
     def __init__(self, left, top, width, height, color=(0, 0, 0), select_color=(200, 0, 0)):
         super().__init__(left, top, width, height)
@@ -42,7 +42,8 @@ class Visualizer:
 
         self._sort_ctrls = {'bubble': False,
                             'insertion': False,
-                            'merge': False, }
+                            'merge': False,
+                            'selection': False, }
 
         self._insertion_index = 1
 
@@ -97,16 +98,20 @@ class Visualizer:
                         self._insertion_index = 1
                 elif event.key == pg.K_RETURN:
                     self._sort_ctrls['merge'] = not self._sort_ctrls['merge']
-                    self._merge_sort()
+                elif event.key == pg.K_UP:
+                    self._sort_ctrls['selection'] = not self._sort_ctrls['selection']
+
+    def _sort_update_screen(self, k):
+        self._update_bars()
+        self._bars[k - 1].select()
+        self._update_screen()
 
     def _bubble_sort(self):
         changed = False
         for i in range(1, len(self._nums)):
             if self._nums[i] < self._nums[i - 1]:
                 self._nums[i], self._nums[i - 1] = self._nums[i - 1], self._nums[i]
-                self._update_bars()
-                self._bars[i].select()
-                self._update_screen()
+                self._sort_update_screen(i + 1)
                 changed = True
 
         return changed
@@ -115,15 +120,8 @@ class Visualizer:
         j = self._insertion_index - 1
         while j >= 0 and self._nums[j] > self._nums[j + 1]:
             self._nums[j + 1], self._nums[j] = self._nums[j], self._nums[j + 1]
-            self._update_bars()
-            self._bars[j].select()
-            self._update_screen()
+            self._sort_update_screen(j + 1)
             j -= 1
-
-    def _merge_update_screen(self, k):
-        self._update_bars()
-        self._bars[k - 1].select()
-        self._update_screen()
 
     def _merge(self, left, right, start_l):
         if not self._sort_ctrls['merge']:
@@ -140,19 +138,19 @@ class Visualizer:
                 self._nums[k] = right[j]
                 j += 1
                 k += 1
-            self._merge_update_screen(k)
+            self._sort_update_screen(k)
 
         while i < len(left):
             self._nums[k] = left[i]
             i += 1
             k += 1
-            self._merge_update_screen(k)
+            self._sort_update_screen(k)
 
         while j < len(right):
             self._nums[k] = right[j]
             j += 1
             k += 1
-            self._merge_update_screen(k)
+            self._sort_update_screen(k)
 
     def _merge_sort(self):
         group_size = 2
@@ -171,11 +169,29 @@ class Visualizer:
                 self._update_screen()
 
             if not loop:
+                self._sort_ctrls['merge'] = False
                 break
             group_size *= 2
 
     def _selection_sort(self):
-        pass
+        start = 0
+        for j in range(len(self._nums)):
+            min_val = None
+            min_index = None
+            for i in range(start, len(self._nums)):
+                if not self._sort_ctrls['selection']:
+                    return
+                self._events_handler()
+                if min_val is None:
+                    min_val = self._nums[i]
+                    min_index = i
+                elif min_val > self._nums[i]:
+                    min_val = self._nums[i]
+                    min_index = i
+            self._nums[start], self._nums[min_index] = self._nums[min_index], self._nums[start]
+            start += 1
+            self._sort_update_screen(min_index + 1)
+        self._sort_ctrls['selection'] = False
 
     def main_loop(self):
         self._generate_nums(200, 1, 100)
@@ -189,6 +205,12 @@ class Visualizer:
             if self._sort_ctrls['insertion'] and self._insertion_index < len(self._nums):
                 self._insertion_sort()
                 self._insertion_index += 1
+
+            if self._sort_ctrls['merge']:
+                self._merge_sort()
+
+            if self._sort_ctrls['selection']:
+                self._selection_sort()
 
             self._update_screen()
 

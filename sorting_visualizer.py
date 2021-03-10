@@ -24,7 +24,7 @@ def generate_nums(n, start, stop):
     nums = [rnd.randint(start, stop) for _ in range(n)]
     return nums
 
-def update_bars(nums, bars=[], indexes_to_change=[], create=False):
+def update_bars(nums, bars=[], create=False):
     global BOARD_SIZE
     global SCREEN_DIMS
     bar_width = BOARD_SIZE[0] / len(nums)
@@ -38,14 +38,8 @@ def update_bars(nums, bars=[], indexes_to_change=[], create=False):
             bar_height_base * num
             ) for i, num in enumerate(nums)]
     else:
-        # for bar, num in zip(bars, enumerate(nums)):
-        #     i, num = num
-        #     bars[i] = MyRect(
-        #         i * bar_width + (SCREEN_DIMS[0] - BOARD_SIZE[0]) / 2 + x_offset, 
-        #         (SCREEN_DIMS[1] - BOARD_SIZE[1]) / 2 + BOARD_SIZE[1] - bar_height_base * num, 
-        #         bar_width, 
-        #         bar_height_base * num)
-        for i in indexes_to_change:
+        for bar, num in zip(bars, enumerate(nums)):
+            i, num = num
             bars[i] = MyRect(
                 i * bar_width + (SCREEN_DIMS[0] - BOARD_SIZE[0]) / 2 + x_offset, 
                 (SCREEN_DIMS[1] - BOARD_SIZE[1]) / 2 + BOARD_SIZE[1] - bar_height_base * num, 
@@ -70,22 +64,23 @@ def bubble_sort(nums, bars):
     for i in range(1, len(nums)):
         if nums[i] < nums[i - 1]:
             nums[i], nums[i - 1] = nums[i - 1], nums[i]
-            bars = update_bars(nums=nums, bars=bars, indexes_to_change=[i - 1, i])
+            bars = update_bars(nums, bars)
             bars[i - 1].select()
             update_ui(bars)
             changed = True
 
     return nums, bars, changed
 
-def insertion_sort(nums, bars, i, j):
-    if j >= 0 and nums[j - 1] > nums[j]:
-        nums[j], nums[j - 1] = nums[j - 1], nums[j]
-        bars = update_bars(bars=bars, indexes_to_change=[i - 1, i])
-        bars[i - 1].select()
+def insertion_sort(nums, bars, i):
+    j = i - 1
+    while j >= 0 and nums[j] > nums[j + 1]:
+        nums[j + 1], nums[j] = nums[j], nums[j + 1]
+        bars = update_bars(nums, bars)
+        bars[i].select()
         update_ui(bars)
-    j -= 1
+        j -= 1
 
-    return nums, bars, j    
+    return nums, bars    
 
 def draw_buttons():
     global SCREEN
@@ -100,7 +95,7 @@ def main():
     bubble_running = False
     insertion_running = False
     running = True
-    nums = generate_nums(50, 1, 100)
+    nums = generate_nums(150, 1, 100)
     bars = update_bars(nums, create=True)
     while running:
         for event in pg.event.get():
@@ -124,23 +119,17 @@ def main():
                     if insertion_running:
                         insertion_running = False
                     else:
-                        insertion_checked_index = 1
-                        nums, bars, j = insertion_sort(nums, bars, insertion_checked_index, 0)
                         insertion_running = True
-                    
+                        insertion_index = 1
 
         SCREEN.fill((255, 255, 255))
 
         if bubble_running:
             nums, bars, bubble_running = bubble_sort(nums, bars)
         
-        if insertion_running:
-            if insertion_checked_index >= len(nums) and j <= 1:
-                insertion_running = False
-            if j <= 0:
-                j = insertion_checked_index
-                insertion_checked_index += 1
-            nums, bars, j = insertion_sort(nums, bars, insertion_checked_index, j)
+        if insertion_running and insertion_index < len(nums):
+            nums, bars = insertion_sort(nums, bars, insertion_index)
+            insertion_index += 1
         
         draw_buttons()
         draw_bars(bars)

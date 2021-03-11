@@ -4,7 +4,7 @@ import random as rnd
 pg.init()
 
 
-# TODO heap, quick
+# TODO radix, bucket
 class MyRect(pg.Rect):
     def __init__(self, left, top, width, height, color=(0, 0, 0), select_color=(200, 0, 0)):
         super().__init__(left, top, width, height)
@@ -35,6 +35,9 @@ class Visualizer:
         self._btns = [MyRect(self._SCR_DIMS[0] - 150 - 50, 200, 150, 75, color=(210, 210, 210))]
 
         self._nums = []
+        self._lower = 1
+        self._higher = 600
+        self._number = 600
 
         self._bars = []
         self._bar_width = 0
@@ -43,13 +46,16 @@ class Visualizer:
         self._sort_ctrls = {'bubble': False,
                             'insertion': False,
                             'merge': False,
-                            'selection': False, }
+                            'selection': False,
+                            'quick': False,
+                            'heap': False,
+                            'counting': False, }
 
         self._insertion_index = 1
 
-    def _generate_nums(self, n, start, stop):
-        self._nums = [rnd.randint(start, stop) for _ in range(n)]
-        self._bar_width = self._BRD_SIZE[0] / len(self._nums)
+    def _generate_nums(self):
+        self._nums = [rnd.randint(self._lower, self._higher) for _ in range(self._number)]
+        self._bar_width = round(self._BRD_SIZE[0] / len(self._nums))
         self._bar_height_base = self._BRD_SIZE[1] / max(self._nums)
 
     def _update_bars(self):
@@ -83,7 +89,7 @@ class Visualizer:
                 for button in self._btns:
                     if button.collidepoint(pos):
                         self._sort_ctrls = {k: False for k in self._sort_ctrls.keys()}
-                        self._generate_nums(200, 1, 100)
+                        self._generate_nums()
                         self._update_bars()
             elif event.type == pg.KEYDOWN:
                 if event.key == pg.K_SPACE:
@@ -100,6 +106,12 @@ class Visualizer:
                     self._sort_ctrls['merge'] = not self._sort_ctrls['merge']
                 elif event.key == pg.K_UP:
                     self._sort_ctrls['selection'] = not self._sort_ctrls['selection']
+                elif event.key == pg.K_DOWN:
+                    self._sort_ctrls['quick'] = not self._sort_ctrls['quick']
+                elif event.key == pg.K_LEFT:
+                    self._sort_ctrls['heap'] = not self._sort_ctrls['heap']
+                elif event.key == pg.K_RIGHT:
+                    self._sort_ctrls['counting'] = not self._sort_ctrls['counting']
 
     def _sort_update_screen(self, k):
         self._update_bars()
@@ -193,8 +205,94 @@ class Visualizer:
             self._sort_update_screen(min_index + 1)
         self._sort_ctrls['selection'] = False
 
+    def _partition(self, start, end):
+        pivot = self._nums[end]
+        i = start - 1
+        for j in range(start, end):
+            self._events_handler()
+            if not self._sort_ctrls['quick']:
+                return
+            if self._nums[j] < pivot:
+                i += 1
+                self._nums[i], self._nums[j] = self._nums[j], self._nums[i]
+            self._sort_update_screen(j)
+        i += 1
+        self._nums[i], self._nums[end] = self._nums[end], self._nums[i]
+        return i
+
+    def _quick_sort(self):
+        stack = [0 for _ in range(len(self._nums))]
+        start, end, index = 0, len(self._nums) - 1, 0
+        stack[index] = start
+        index += 1
+        stack[index] = end
+        index += 1
+        while index > 0:
+            index -= 1
+            end = stack[index]
+            index -= 1
+            start = stack[index]
+            if start >= end:
+                continue
+            pivot_index = self._partition(start, end)
+            if not self._sort_ctrls['quick']:
+                return
+            stack[index] = start
+            index += 1
+            stack[index] = pivot_index - 1
+            index += 1
+            stack[index] = pivot_index + 1
+            index += 1
+            stack[index] = end
+            index += 1
+        self._sort_ctrls['quick'] = False
+
+    def _maxify_heap(self, n, parent_i):
+        self._events_handler()
+        if not self._sort_ctrls['heap']:
+            return
+        left = 2 * parent_i + 1
+        right = 2 * parent_i + 2
+        largest_i = parent_i
+        self._sort_update_screen(parent_i + 1)
+
+        if left < n and self._nums[left] > self._nums[largest_i]:
+            largest_i = left
+        if right < n and self._nums[right] > self._nums[largest_i]:
+            largest_i = right
+
+        if largest_i != parent_i:
+            self._nums[parent_i], self._nums[largest_i] = self._nums[largest_i], self._nums[parent_i]
+            self._maxify_heap(n, largest_i)
+
+    def _heap_sort(self):
+        last_parent_i = len(self._nums) // 2 - 1
+        for i in range(last_parent_i, -1, -1):
+            self._maxify_heap(len(self._nums), i)
+        for j in range(len(self._nums) - 1, 0, -1):
+            self._nums[j], self._nums[0] = self._nums[0], self._nums[j]
+            self._maxify_heap(j, 0)
+        self._sort_ctrls['heap'] = False
+
+    def _counting_sort(self):
+        arr = self._nums[:]
+        counter = {i: 0 for i in range(max(arr) + 1)}
+        for num in arr:
+            counter[num] += 1
+        for i in range(1, len(counter)):
+            counter[i] += counter[i - 1]
+        for num in arr:
+            self._events_handler()
+            if not self._sort_ctrls['counting']:
+                return
+            new_index = counter[num] - 1
+            counter[num] -= 1
+            self._nums[new_index] = num
+            self._sort_update_screen(new_index)
+        self._sort_ctrls['counting'] = False
+
     def main_loop(self):
-        self._generate_nums(200, 1, 100)
+        self._generate_nums()
         self._update_bars()
         while self._running:
             self._events_handler()
@@ -211,6 +309,15 @@ class Visualizer:
 
             if self._sort_ctrls['selection']:
                 self._selection_sort()
+
+            if self._sort_ctrls['quick']:
+                self._quick_sort()
+
+            if self._sort_ctrls['heap']:
+                self._heap_sort()
+
+            if self._sort_ctrls['counting']:
+                self._counting_sort()
 
             self._update_screen()
 

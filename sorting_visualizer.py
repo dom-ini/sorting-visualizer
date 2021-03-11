@@ -4,7 +4,7 @@ import random as rnd
 pg.init()
 
 
-# TODO radix, bucket
+# TODO radix, bucket, shell
 class MyRect(pg.Rect):
     def __init__(self, left, top, width, height, color=(0, 0, 0), select_color=(200, 0, 0)):
         super().__init__(left, top, width, height)
@@ -49,7 +49,8 @@ class Visualizer:
                             'selection': False,
                             'quick': False,
                             'heap': False,
-                            'counting': False, }
+                            'counting': False,
+                            'radix': False, }
 
         self._insertion_index = 1
 
@@ -112,6 +113,8 @@ class Visualizer:
                     self._sort_ctrls['heap'] = not self._sort_ctrls['heap']
                 elif event.key == pg.K_RIGHT:
                     self._sort_ctrls['counting'] = not self._sort_ctrls['counting']
+                elif event.key == pg.K_BACKSLASH:
+                    self._sort_ctrls['radix'] = not self._sort_ctrls['radix']
 
     def _sort_update_screen(self, k):
         self._update_bars()
@@ -291,6 +294,30 @@ class Visualizer:
             self._sort_update_screen(new_index)
         self._sort_ctrls['counting'] = False
 
+    def _radix_sort(self):
+        max_ = max(self._nums)
+        exp = 1
+        while max_ / exp > 1:
+            counter_range = max([i // exp % 10 for i in self._nums])
+            counter = {i: 0 for i in range(counter_range + 1)}
+            sorted_arr = [None] * len(self._nums)
+            for num in self._nums:
+                counter[num // exp % 10] += 1
+            for i in range(1, len(counter)):
+                counter[i] += counter[i - 1]
+            for num in self._nums[::-1]:
+                new_index = counter[num // exp % 10] - 1
+                sorted_arr[new_index] = num
+                counter[num // exp % 10] -= 1
+            for i, num in enumerate(sorted_arr):
+                self._events_handler()
+                if not self._sort_ctrls['radix']:
+                    return
+                self._nums[i] = num
+                self._sort_update_screen(i)
+            exp *= 10
+        self._sort_ctrls['radix'] = False
+
     def main_loop(self):
         self._generate_nums()
         self._update_bars()
@@ -318,6 +345,9 @@ class Visualizer:
 
             if self._sort_ctrls['counting']:
                 self._counting_sort()
+
+            if self._sort_ctrls['radix']:
+                self._radix_sort()
 
             self._update_screen()
 

@@ -4,7 +4,7 @@ import random as rnd
 pg.init()
 
 
-# TODO radix, bucket, shell
+# TODO bucket, shell
 class MyRect(pg.Rect):
     def __init__(self, left, top, width, height, color=(0, 0, 0), select_color=(200, 0, 0)):
         super().__init__(left, top, width, height)
@@ -37,7 +37,7 @@ class Visualizer:
         self._nums = []
         self._lower = 1
         self._higher = 600
-        self._number = 600
+        self._number = 200
 
         self._bars = []
         self._bar_width = 0
@@ -50,7 +50,8 @@ class Visualizer:
                             'quick': False,
                             'heap': False,
                             'counting': False,
-                            'radix': False, }
+                            'radix': False,
+                            'shell': False, }
 
         self._insertion_index = 1
 
@@ -94,15 +95,9 @@ class Visualizer:
                         self._update_bars()
             elif event.type == pg.KEYDOWN:
                 if event.key == pg.K_SPACE:
-                    # delay = 1000 / len(bars)
-                    # delay = int(delay) if delay >= 1 else 0
                     self._sort_ctrls['bubble'] = not self._sort_ctrls['bubble']
                 elif event.key == pg.K_BACKSPACE:
-                    if self._sort_ctrls['insertion']:
-                        self._sort_ctrls['insertion'] = False
-                    else:
-                        self._sort_ctrls['insertion'] = True
-                        self._insertion_index = 1
+                    self._sort_ctrls['insertion'] = not self._sort_ctrls['insertion']
                 elif event.key == pg.K_RETURN:
                     self._sort_ctrls['merge'] = not self._sort_ctrls['merge']
                 elif event.key == pg.K_UP:
@@ -115,6 +110,8 @@ class Visualizer:
                     self._sort_ctrls['counting'] = not self._sort_ctrls['counting']
                 elif event.key == pg.K_BACKSLASH:
                     self._sort_ctrls['radix'] = not self._sort_ctrls['radix']
+                elif event.key == pg.K_F1:
+                    self._sort_ctrls['shell'] = not self._sort_ctrls['shell']
 
     def _sort_update_screen(self, k):
         self._update_bars()
@@ -122,21 +119,29 @@ class Visualizer:
         self._update_screen()
 
     def _bubble_sort(self):
-        changed = False
-        for i in range(1, len(self._nums)):
-            if self._nums[i] < self._nums[i - 1]:
-                self._nums[i], self._nums[i - 1] = self._nums[i - 1], self._nums[i]
-                self._sort_update_screen(i + 1)
-                changed = True
-
-        return changed
+        while True:
+            changed = False
+            for i in range(1, len(self._nums)):
+                self._events_handler()
+                if not self._sort_ctrls['bubble']:
+                    return
+                if self._nums[i] < self._nums[i - 1]:
+                    self._nums[i], self._nums[i - 1] = self._nums[i - 1], self._nums[i]
+                    self._sort_update_screen(i + 1)
+                    changed = True
+            if not changed:
+                return
 
     def _insertion_sort(self):
+        if not self._insertion_index < len(self._nums):
+            self._insertion_index = 1
+            return
         j = self._insertion_index - 1
         while j >= 0 and self._nums[j] > self._nums[j + 1]:
             self._nums[j + 1], self._nums[j] = self._nums[j], self._nums[j + 1]
             self._sort_update_screen(j + 1)
             j -= 1
+        self._insertion_index += 1
 
     def _merge(self, left, right, start_l):
         if not self._sort_ctrls['merge']:
@@ -318,6 +323,22 @@ class Visualizer:
             exp *= 10
         self._sort_ctrls['radix'] = False
 
+    def _shell_sort(self):
+        dist = len(self._nums) // 2
+        iteration = 1
+        while dist > 0:
+            for i in range(dist, len(self._nums)):
+                j = i
+                while j >= dist and self._nums[j - dist] > self._nums[j]:
+                    self._events_handler()
+                    if not self._sort_ctrls['shell']:
+                        return
+                    self._nums[j], self._nums[j - dist] = self._nums[j - dist], self._nums[j]
+                    self._sort_update_screen(i)
+                    j -= dist
+            iteration += 1
+            dist //= 2
+
     def main_loop(self):
         self._generate_nums()
         self._update_bars()
@@ -325,11 +346,10 @@ class Visualizer:
             self._events_handler()
 
             if self._sort_ctrls['bubble']:
-                self._sort_ctrls['bubble'] = self._bubble_sort()
+                self._bubble_sort()
 
-            if self._sort_ctrls['insertion'] and self._insertion_index < len(self._nums):
+            if self._sort_ctrls['insertion']:
                 self._insertion_sort()
-                self._insertion_index += 1
 
             if self._sort_ctrls['merge']:
                 self._merge_sort()
@@ -348,6 +368,9 @@ class Visualizer:
 
             if self._sort_ctrls['radix']:
                 self._radix_sort()
+
+            if self._sort_ctrls['shell']:
+                self._shell_sort()
 
             self._update_screen()
 

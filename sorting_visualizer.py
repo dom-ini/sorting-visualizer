@@ -39,10 +39,188 @@ class MyRect(pg.Rect):
     def color(self) -> tuple:
         """
         Getter of the current color of the rectangle
-
-        :return: the current color of the rectangle
         """
         return self._color
+
+
+class Cycle:
+    """
+    Class for repeated cycling through the given list or tuple
+    """
+    def __init__(self, c: list or tuple):
+        """
+        :param c: the list or tuple to cycle through
+        """
+        self._c = c
+        self._index = -1
+
+    def __next__(self):
+        self._index += 1
+        if self._index >= len(self._c):
+            self._index = 0
+        return self._c[self._index]
+
+    def reset(self):
+        """
+        Resets the cycling to the first element
+        """
+        self._index = -1
+
+    @property
+    def previous(self):
+        """
+        Getter for the previous element of the list or tuple
+        """
+        self._index -= 1
+        if self._index < 0:
+            self._index = len(self._c) - 1
+        return self._c[self._index]
+
+
+class Button:
+    def __init__(self, position: tuple, size: tuple, border: int = 0, color: tuple = (255, 255, 255),
+                 image_path: str = None, image_size: tuple = None, font: pg.font.Font = None, text: str = None,
+                 center_text: bool = None, clickable: bool = True):
+        """
+        :param position: the position of the button on the screen (x, y)
+        :param size: the size of the button (x, y)
+        :param border: the border size of the button
+        :param color: the background color of the button (RGB)
+        :param image_path: a path to the button's background image
+        :param image_size: the size of the button's image
+        :param font: the font of the button's text
+        :param text: the text that will be displayed on the button
+        :param center_text: if the text has to be centered within the button
+        :param clickable: if the button is interactive or not
+        """
+        self._position = tuple(x - border for x in position)
+        self._size = tuple(x + border * 2 for x in size)
+        self._border = border
+        self._font = font
+        self._text = text
+        self._center_text = center_text
+        self._image_path = image_path
+        self._image_size = image_size if image_size else size
+        if image_path:
+            self._image = pg.image.load(image_path)
+            self._image = pg.transform.scale(self._image, self._image_size)
+        else:
+            self._image = None
+        self._org_image = self._image
+        self._surface = pg.Surface(self._size, flags=pg.SRCALPHA)
+        self._color = color
+        self._org_color = color
+        self._clickable = clickable
+        self._draw()
+
+    def _draw(self):
+        """
+        Draws the button's elements on its surface
+        """
+        self._surface.fill(self._color)
+        self._rect = pg.Rect(self._position, self._size)
+        if self._image:
+            self._rect = self._image.get_rect(center=tuple(x / 2 for x in self._size)).move(*self._position)
+            self._surface.blit(self._image, tuple((x - y) / 2 for x, y in zip(self._size, self._image_size)))
+        elif self._text:
+            text = self._font.render(self._text, True, (0, 0, 0))
+            text_pos = (0, 0)
+            if self._center_text:
+                text_pos = tuple((x - y) / 2 for x, y in zip(self._size, text.get_size()))
+            self._surface.blit(text, text_pos)
+        if self._border:
+            # left border
+            pg.draw.rect(self._surface, (0, 0, 0), pg.Rect((0, 0), (self._border, self._size[1])))
+            # right border
+            pg.draw.rect(self._surface, (0, 0, 0), pg.Rect((self._size[0] - self._border, 0),
+                                                           (self._border, self._size[1])))
+            # top border
+            pg.draw.rect(self._surface, (0, 0, 0), pg.Rect((0, 0), (self._size[0], self._border)))
+            # bottom border
+            pg.draw.rect(self._surface, (0, 0, 0), pg.Rect((0, self._size[1] - self._border),
+                                                           (self._size[0], self._border)))
+
+    def update_image(self, image_path: str, image_size: tuple = None):
+        """
+        Updates the current image of the button
+
+        :param image_path: a path to a new image
+        :param image_size: the size of the image
+        """
+        self._image = pg.image.load(image_path)
+        self._image_size = image_size if image_size else self._image_size
+        self._image = pg.transform.scale(self._image, self._image_size)
+        self._draw()
+
+    def update_text(self, text: str):
+        """
+        Updates the text on the button
+
+        :param text: the new button's text
+        """
+        self._text = text
+        self._draw()
+
+    def update_color(self, color: tuple):
+        """
+        Updates the background color of the button
+
+        :param color: the new button's background color (RGB)
+        """
+        self._color = color
+        self._draw()
+
+    def blit(self, surface: pg.Surface):
+        """
+        Blits the button onto the given surface
+
+        :param surface: pygame Surface to blit the button onto
+        """
+        surface.blit(self._surface, self._position)
+
+    def check_collision(self, pos: tuple) -> bool:
+        """
+        Checks if the given coordinates are within the button
+
+        :param pos: the coordinates to check
+        :return: 1 if the given point is within the button, 0 otherwise
+        """
+        return self._rect.collidepoint(pos) if self._clickable else 0
+
+    def reset_image(self):
+        """
+        Reverts the image of the button to the given one on creation
+        """
+        self._image = self._org_image
+        self._draw()
+
+    @property
+    def position(self) -> tuple:
+        """
+        Getter for the position of the button
+        """
+        return self._position
+
+    @property
+    def size(self) -> tuple:
+        """
+        Getter for the size of the button
+        """
+        return self._size
+
+    @property
+    def clickable(self) -> bool:
+        """
+        Getter for the information whether the button is clickable or not
+        """
+        return self._clickable
+
+    @property
+    def org_color(self):
+        """
+        Getter for the color of the button passed on creation
+        """
+        return self._org_color
 
 
 class Visualizer:
@@ -52,29 +230,16 @@ class Visualizer:
     def __init__(self):
         # screen settings
         self._SCR_DIMS = 1024, 768
+        self._ICON = pg.image.load('img/icon.png')
         self._scr = pg.display.set_mode(self._SCR_DIMS)
         pg.display.set_caption('Sorting Visualizer')
+        pg.display.set_icon(self._ICON)
 
-        # pygame loop variable
+        # pygame loop variables
         self._running = True
         self._clock = pg.time.Clock()
 
-        # interface variables
-        self._BRD_SIZE = 600, 600
-        self._btns = [MyRect(self._SCR_DIMS[0] - 150 - 50, 200, 150, 75, color=(210, 210, 210))]
-
-        # number generation parameters
-        self._nums = []
-        self._lower = 1  # lower bound for generated values
-        self._higher = 600  # higher bound for generated values
-        self._number = 600  # the length of the generated array
-
-        # variables for the graphical representation of numbers to sort
-        self._bars = []
-        self._bar_width = 0
-        self._bar_height_base = 0
-
-        # dict of all implemented sorting algorithms
+        # dict for controlling the state of sorting algorithms
         self._sort_ctrls = {'bubble': False,
                             'insertion': False,
                             'merge': False,
@@ -88,13 +253,77 @@ class Visualizer:
         # variable for the insertion sort, contains the index of number to be checked
         self._insertion_index = 1
 
+        # sorting algorithm choosing variables
+        self._sort_names = Cycle(['bubble', 'insertion', 'merge', 'selection', 'quick', 'heap', 'counting', 'radix',
+                                  'shell'])
+        self._chosen_sort = next(self._sort_names)
+        self._sort_states = Cycle(['start', 'stop'])
+
+        # fonts
+        self._fnt = pg.font.SysFont('calibri', 30)
+
+        # interface
+        self._BRD_SIZE = 600, 600
+        btn_size = 150, 75
+        btn_offs_x = 75
+        btn_spacing_y = 25
+        self._generate_btn = Button(
+            position=(self._SCR_DIMS[0] - btn_size[0] - btn_offs_x, (self._SCR_DIMS[1] - self._BRD_SIZE[1]) / 2),
+            size=btn_size, color=(255, 255, 255), border=2, font=self._fnt, text='Generate', center_text=True)
+
+        self._sort_name_btn = Button(
+            position=(self._SCR_DIMS[0] - btn_size[0] - btn_offs_x,
+                      (self._SCR_DIMS[1] - self._BRD_SIZE[1]) / 2 + btn_size[1] + btn_spacing_y),
+            size=btn_size, color=(255, 255, 255), font=self._fnt, text=self._chosen_sort.capitalize(), center_text=True,
+            clickable=False)
+
+        self._start_pause_btn = Button(
+            position=(self._SCR_DIMS[0] - btn_size[0] - btn_offs_x,
+                      (self._SCR_DIMS[1] - self._BRD_SIZE[1]) / 2 + (btn_size[1] + btn_spacing_y) * 2),
+            size=btn_size, color=(255, 255, 255), border=2, font=self._fnt, text=next(self._sort_states).capitalize(),
+            center_text=True)
+
+        self._exit_btn = Button(
+            position=(self._SCR_DIMS[0] - btn_size[0] - btn_offs_x,
+                      (self._SCR_DIMS[1] - self._BRD_SIZE[1]) / 2 + (btn_size[1] + btn_spacing_y) * 3),
+            size=btn_size, color=(255, 255, 255), border=2, font=self._fnt, text='Exit', center_text=True)
+
+        self._text_btns = [self._generate_btn, self._sort_name_btn, self._start_pause_btn, self._exit_btn]
+
+        arrow_btn_size = 50, 50
+        arrow_btn_offs_x = 10
+        self._arrow_l_btn = Button(
+            position=(self._text_btns[1].position[0] - arrow_btn_size[0] - arrow_btn_offs_x,
+                      self._text_btns[1].position[1] + (self._text_btns[1].size[1] - arrow_btn_size[1]) / 2),
+            size=arrow_btn_size, image_path='img/arrow_l.png')
+
+        self._arrow_r_btn = Button(
+            position=(self._text_btns[1].position[0] + self._text_btns[1].size[0] + arrow_btn_offs_x,
+                      self._text_btns[1].position[1] + (self._text_btns[1].size[1] - arrow_btn_size[1]) / 2),
+            size=arrow_btn_size, image_path='img/arrow_r.png')
+
+        self._arrow_btns = [self._arrow_l_btn, self._arrow_r_btn]
+
+        # number generation parameters
+        self._nums = []
+        self._lower = 1  # lower bound for generated values
+        self._higher = 600  # higher bound for generated values
+        self._number = 600  # the length of the generated array
+        self._sorted = False
+
+        # variables for the graphical representation of numbers to sort
+        self._bars = []
+        self._bar_width = 0
+        self._bar_height_base = 0
+
     def _generate_nums(self):
         """
         Generates the random numbers array to be sorted
         """
         self._nums = [rnd.randint(self._lower, self._higher) for _ in range(self._number)]
         self._bar_width = round(self._BRD_SIZE[0] / len(self._nums))
-        self._bar_height_base = self._BRD_SIZE[1] / max(self._nums)
+        self._bar_height_base = round(self._BRD_SIZE[1] / max(self._nums))
+        self._sorted = False
 
     def _update_bars(self):
         """
@@ -118,8 +347,10 @@ class Visualizer:
         """
         Draws the buttons on the screen
         """
-        for button in self._btns:
-            pg.draw.rect(self._scr, button.color, button)
+        for button in self._text_btns:
+            button.blit(self._scr)
+        for button in self._arrow_btns:
+            button.blit(self._scr)
 
     def _update_screen(self):
         """
@@ -130,40 +361,57 @@ class Visualizer:
         self._draw_buttons()
         pg.display.flip()
 
+    def _button_hover(self, pos: tuple, hover_color: tuple = (210, 210, 210)):
+        """
+        Creates the hover effect on the buttons within the given list
+
+        :param pos: the mouse position
+        :param hover_color: the color of hovered button
+        """
+        for button in self._text_btns:
+            if button.check_collision(pos) and button.clickable:
+                button.update_color(color=hover_color)
+            else:
+                button.update_color(color=button.org_color)
+        for button, dir_ in zip(self._arrow_btns, ('l', 'r')):
+            if button.check_collision(pos) and button.clickable:
+                button.update_image(f'img/arrow_{dir_}_hover.png')
+            else:
+                button.reset_image()
+
+    def _reset_sort(self):
+        self._insertion_index = 1
+        self._sort_ctrls = {k: False for k in self._sort_ctrls.keys()}
+        self._sort_states.reset()
+        self._start_pause_btn.update_text(next(self._sort_states).capitalize())
+        self._generate_nums()
+        self._update_bars()
+
     def _events_handler(self):
         """
         Handles the pygame events
         """
         for event in pg.event.get():
+            pos = pg.mouse.get_pos()
             if event.type == pg.QUIT:
                 self._running = False
             elif event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
-                pos = pg.mouse.get_pos()
-                for button in self._btns:
-                    if button.collidepoint(pos):
-                        self._insertion_index = 1
-                        self._sort_ctrls = {k: False for k in self._sort_ctrls.keys()}
-                        self._generate_nums()
-                        self._update_bars()
-            elif event.type == pg.KEYDOWN:
-                if event.key == pg.K_SPACE:
-                    self._sort_ctrls['bubble'] = not self._sort_ctrls['bubble']
-                elif event.key == pg.K_BACKSPACE:
-                    self._sort_ctrls['insertion'] = not self._sort_ctrls['insertion']
-                elif event.key == pg.K_RETURN:
-                    self._sort_ctrls['merge'] = not self._sort_ctrls['merge']
-                elif event.key == pg.K_UP:
-                    self._sort_ctrls['selection'] = not self._sort_ctrls['selection']
-                elif event.key == pg.K_DOWN:
-                    self._sort_ctrls['quick'] = not self._sort_ctrls['quick']
-                elif event.key == pg.K_LEFT:
-                    self._sort_ctrls['heap'] = not self._sort_ctrls['heap']
-                elif event.key == pg.K_RIGHT:
-                    self._sort_ctrls['counting'] = not self._sort_ctrls['counting']
-                elif event.key == pg.K_BACKSLASH:
-                    self._sort_ctrls['radix'] = not self._sort_ctrls['radix']
-                elif event.key == pg.K_F1:
-                    self._sort_ctrls['shell'] = not self._sort_ctrls['shell']
+                if self._generate_btn.check_collision(pos):
+                    self._reset_sort()
+                if self._start_pause_btn.check_collision(pos):
+                    self._sort_ctrls[self._chosen_sort] = not self._sort_ctrls[self._chosen_sort]
+                    self._start_pause_btn.update_text(next(self._sort_states).capitalize())
+                if self._arrow_r_btn.check_collision(pos):
+                    self._chosen_sort = next(self._sort_names)
+                    self._sort_name_btn.update_text(self._chosen_sort.capitalize())
+                    self._reset_sort()
+                if self._arrow_l_btn.check_collision(pos):
+                    self._chosen_sort = self._sort_names.previous
+                    self._sort_name_btn.update_text(self._chosen_sort.capitalize())
+                    self._reset_sort()
+                if self._exit_btn.check_collision(pos):
+                    self._running = False
+            self._button_hover(pos)
 
     def _sort_update_screen(self, i: int):
         """
@@ -191,6 +439,8 @@ class Visualizer:
                     self._sort_update_screen(i)
                     changed = True
             if not changed:
+                self._sort_ctrls['bubble'] = False
+                self._sorted = True
                 return
 
     def _insertion_sort(self):
@@ -200,9 +450,11 @@ class Visualizer:
         if not self._insertion_index < len(self._nums):
             self._insertion_index = 1
             self._sort_ctrls['insertion'] = False
+            self._sorted = True
             return
         j = self._insertion_index - 1
         while j >= 0 and self._nums[j] > self._nums[j + 1]:
+            self._events_handler()
             self._nums[j + 1], self._nums[j] = self._nums[j], self._nums[j + 1]
             self._sort_update_screen(j)
             j -= 1
@@ -222,6 +474,7 @@ class Visualizer:
         k = start_l
 
         while i < len(left) and j < len(right):
+            self._sort_update_screen(k)
             if left[i] < right[j]:
                 self._nums[k] = left[i]
                 i += 1
@@ -230,19 +483,18 @@ class Visualizer:
                 self._nums[k] = right[j]
                 j += 1
                 k += 1
-            self._sort_update_screen(k)
 
         while i < len(left):
             self._nums[k] = left[i]
+            self._sort_update_screen(k)
             i += 1
             k += 1
-            self._sort_update_screen(k)
 
         while j < len(right):
             self._nums[k] = right[j]
+            self._sort_update_screen(k)
             j += 1
             k += 1
-            self._sort_update_screen(k)
 
     def _merge_sort(self):
         """
@@ -251,7 +503,7 @@ class Visualizer:
         group_size = 2
         loop = True
         while True:
-            if group_size > len(self._nums):
+            if group_size > len(self._nums) or self._sorted:
                 loop = False
             loop_range = len(self._nums) // group_size + bool(len(self._nums) % group_size)
             for i in range(loop_range):
@@ -266,6 +518,8 @@ class Visualizer:
                 self._update_screen()
 
             if not loop:
+                self._sort_ctrls['merge'] = False
+                self._sorted = True
                 return
             group_size *= 2
 
@@ -292,6 +546,7 @@ class Visualizer:
             start += 1
             self._sort_update_screen(min_index)
         self._sort_ctrls['selection'] = False
+        self._sorted = True
 
     def _partition(self, start: int, end: int):
         """
@@ -336,6 +591,9 @@ class Visualizer:
             pivot_index = self._partition(start, end)
             if not self._sort_ctrls['quick']:
                 return
+            elif self._sorted:
+                self._sort_ctrls['quick'] = False
+                return
             stack[index] = start
             index += 1
             stack[index] = pivot_index - 1
@@ -345,6 +603,7 @@ class Visualizer:
             stack[index] = end
             index += 1
         self._sort_ctrls['quick'] = False
+        self._sorted = True
 
     def _maxify_heap(self, n, parent_i):
         """
@@ -381,6 +640,7 @@ class Visualizer:
             self._nums[j], self._nums[0] = self._nums[0], self._nums[j]
             self._maxify_heap(j, 0)
         self._sort_ctrls['heap'] = False
+        self._sorted = True
 
     def _counting_sort(self):
         """
@@ -402,6 +662,7 @@ class Visualizer:
             self._nums[new_index] = num
             self._sort_update_screen(new_index)
         self._sort_ctrls['counting'] = False
+        self._sorted = True
 
     def _radix_sort(self):
         """
@@ -430,6 +691,7 @@ class Visualizer:
                 self._sort_update_screen(i)
             exp *= 10
         self._sort_ctrls['radix'] = False
+        self._sorted = True
 
     def _shell_sort(self):
         """
@@ -451,6 +713,7 @@ class Visualizer:
             iteration += 1
             dist //= 2
         self._sort_ctrls['shell'] = False
+        self._sorted = True
 
     def main_loop(self):
         """
@@ -460,34 +723,27 @@ class Visualizer:
         self._update_bars()
         while self._running:
             self._events_handler()
-
             if self._sort_ctrls['bubble']:
                 self._bubble_sort()
-
             if self._sort_ctrls['insertion']:
                 self._insertion_sort()
-
             if self._sort_ctrls['merge']:
                 self._merge_sort()
-
             if self._sort_ctrls['selection']:
                 self._selection_sort()
-
             if self._sort_ctrls['quick']:
                 self._quick_sort()
-
             if self._sort_ctrls['heap']:
                 self._heap_sort()
-
             if self._sort_ctrls['counting']:
                 self._counting_sort()
-
             if self._sort_ctrls['radix']:
                 self._radix_sort()
-
             if self._sort_ctrls['shell']:
                 self._shell_sort()
-
+            if self._sorted:
+                self._sort_states.reset()
+                self._start_pause_btn.update_text(next(self._sort_states).capitalize())
             self._update_screen()
             self._clock.tick(60)
 

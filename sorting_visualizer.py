@@ -1,5 +1,6 @@
 import pygame as pg
 import random as rnd
+from typing import Union
 
 pg.init()
 
@@ -47,7 +48,7 @@ class Cycle:
     """
     Class for repeated cycling through the given list or tuple
     """
-    def __init__(self, c: list or tuple):
+    def __init__(self, c: Union[list, tuple]):
         """
         :param c: the list or tuple to cycle through
         """

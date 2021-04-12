@@ -1,7 +1,7 @@
 # sorting-visualizer
 A program to visualize the sorting algorithms step-by-step. 
 
-<img src='gifs/sort.gif' width=500px height=375px style="height:auto;max-width: 100%;">
+<img src='gifs/sort.gif' width=500px>
 
 ## External libraries
 Built on pygame. Python 3.8.3.
@@ -18,4 +18,4 @@ The program includes:
 - radix sort
 - Shell sort
 
-<img src='gifs/algorithms.gif' width=500px height=375px style="height:auto;max-width: 100%;">
+<img src='gifs/algorithms.gif' width=500px>
